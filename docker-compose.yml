@@ -1,5 +1,6 @@
 services:
   woodpecker-server:
+    profiles: ["all", "server"]
     image: woodpeckerci/woodpecker-server:v3
     container_name: woodpecker-server
     restart: always
@@ -19,6 +20,7 @@ services:
       - WOODPECKER_REPO_OWNERS=${WOODPECKER_REPO_OWNERS}
 
   woodpecker-agent:
+    profiles: ["all", "agent"]
     image: woodpeckerci/woodpecker-agent:v3
     command: agent
     container_name: woodpecker-agent
@@ -30,7 +32,7 @@ services:
       - woodpecker-agent-config:/etc/woodpecker
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
-      - WOODPECKER_SERVER=woodpecker-server:9000
+      - WOODPECKER_SERVER=${WOODPECKER_GRPC_ADDR:-woodpecker-server:9000}
       - WOODPECKER_AGENT_SECRET=${WOODPECKER_AGENT_SECRET}
       - WOODPECKER_MAX_WORKFLOWS=${WOODPECKER_MAX_WORKFLOWS:-1}
 

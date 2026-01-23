@@ -3,14 +3,18 @@
   "version": "1.0.0",
   "description": "Woodpecker CI Server",
   "scripts": {
-    "start": "docker compose up -d",
-    "stop": "docker compose down",
-    "restart": "docker compose restart",
+    "start": "docker compose --profile all up -d",
+    "start:server": "docker compose --profile server up -d",
+    "start:agent": "docker compose --profile agent up -d",
+    "stop": "docker compose --profile all down",
+    "stop:server": "docker compose --profile server down",
+    "stop:agent": "docker compose --profile agent down",
+    "restart": "docker compose --profile all restart",
     "logs": "docker compose logs -f",
     "logs:server": "docker compose logs -f woodpecker-server",
     "logs:agent": "docker compose logs -f woodpecker-agent",
-    "status": "docker compose ps",
-    "pull": "docker compose pull",
-    "update": "docker compose pull && docker compose up -d"
+    "status": "docker compose --profile all ps -a",
+    "pull": "docker compose --profile all pull",
+    "update": "docker compose --profile all pull && docker compose --profile all up -d"
   }
 }
