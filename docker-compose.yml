@@ -1,6 +1,6 @@
 services:
   woodpecker-server:
-    image: woodpeckerci/woodpecker-server:latest
+    image: woodpeckerci/woodpecker-server:v3
     container_name: woodpecker-server
     restart: always
     ports:
@@ -15,14 +15,19 @@ services:
       - WOODPECKER_GITHUB_SECRET=${WOODPECKER_GITHUB_SECRET}
       - WOODPECKER_AGENT_SECRET=${WOODPECKER_AGENT_SECRET}
       - WOODPECKER_ADMIN=${WOODPECKER_ADMIN}
+      - WOODPECKER_PLUGINS_PRIVILEGED=woodpeckerci/plugin-docker-buildx,docker
+      - WOODPECKER_REPO_OWNERS=${WOODPECKER_REPO_OWNERS}
 
   woodpecker-agent:
-    image: woodpeckerci/woodpecker-agent:latest
+    image: woodpeckerci/woodpecker-agent:v3
+    command: agent
     container_name: woodpecker-agent
     restart: always
+    privileged: true
     depends_on:
       - woodpecker-server
     volumes:
+      - woodpecker-agent-config:/etc/woodpecker
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
       - WOODPECKER_SERVER=woodpecker-server:9000
@@ -31,3 +36,4 @@ services:
 
 volumes:
   woodpecker-server-data:
+  woodpecker-agent-config:
