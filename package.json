@@ -1,0 +1,16 @@
+{
+  "name": "woodpecker-server",
+  "version": "1.0.0",
+  "description": "Woodpecker CI Server",
+  "scripts": {
+    "start": "docker compose up -d",
+    "stop": "docker compose down",
+    "restart": "docker compose restart",
+    "logs": "docker compose logs -f",
+    "logs:server": "docker compose logs -f woodpecker-server",
+    "logs:agent": "docker compose logs -f woodpecker-agent",
+    "status": "docker compose ps",
+    "pull": "docker compose pull",
+    "update": "docker compose pull && docker compose up -d"
+  }
+}
