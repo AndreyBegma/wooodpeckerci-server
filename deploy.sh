@@ -2,7 +2,7 @@
 
 set -e
 
-SERVER="hatkom"
+SERVER=""
 REMOTE_PATH="/var/app/apps/woodpecker"
 
 echo "Deploying Woodpecker CI to $SERVER..."
