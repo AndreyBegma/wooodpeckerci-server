@@ -1,0 +1,25 @@
+# FEAT-20260819-205 — CI image for the Luna pipelines.
+#
+# Node and bun in one image, so the check steps install nothing at runtime.
+# Doing it per-step was slow and, worse, silently unreliable: the same install
+# lines succeeded in lint and left bun missing in test, with no output in the
+# logs to explain why.
+#
+# Node is the base rather than oven/bun because jest cannot run under Bun's
+# runtime — it dies inside jest-runtime with "Attempted to assign to readonly
+# property". bun is here for dependency resolution and turbo, which needs the
+# package manager binary present.
+#
+# Built on the Mac and used straight from the local daemon; the agent runs
+# there, so no registry is involved.
+FROM node:24-bookworm-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      curl unzip ca-certificates openssl git \
+    && rm -rf /var/lib/apt/lists/*
+
+ENV BUN_INSTALL=/usr/local/bun
+ENV PATH=$BUN_INSTALL/bin:$PATH
+RUN curl -fsSL https://bun.sh/install | bash
+
+RUN node --version && bun --version
