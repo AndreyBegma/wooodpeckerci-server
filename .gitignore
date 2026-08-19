@@ -1,2 +1,7 @@
+# Real env files carry the shared agent secret and the GitHub OAuth secret.
+# Only the .example templates belong in git.
 .env
+.env.*
+!.env.*.example
+
 node_modules

@@ -1,0 +1,39 @@
+# FEAT-20260819-205 — Woodpecker agent, runs on the Mac.
+#
+# The build host is deliberately NOT the NAS. Its 4 GB of RAM cannot survive a
+# `bun install` across the Luna monorepos, so images are built here and shipped
+# over. Apple Silicon is arm64, same as the NAS, so the builds are native.
+#
+# Consequence worth knowing: with the Mac off, nothing builds and nothing
+# deploys. The server on the NAS keeps queueing.
+#
+# The existing docker-compose.yml in this repo cannot be used for an agent-only
+# deployment: its agent service has `depends_on: woodpecker-server`, which drags
+# the server into a profile meant to run without it.
+
+name: woodpecker-agent
+
+services:
+  woodpecker-agent:
+    image: woodpeckerci/woodpecker-agent:v3
+    command: agent
+    container_name: woodpecker-agent
+    restart: unless-stopped
+    volumes:
+      - woodpecker-agent-config:/etc/woodpecker
+      # Pipeline steps build and ship images through the host daemon.
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      # gRPC straight over the LAN — this never goes through the tunnel.
+      WOODPECKER_SERVER: ${WOODPECKER_GRPC_ADDR:-192.168.0.37:9000}
+      # Woodpecker 3.x renamed the shared secret to WOODPECKER_GRPC_SECRET.
+      # Both names are set so agent and server agree regardless of which one
+      # each side reads.
+      WOODPECKER_GRPC_SECRET: ${WOODPECKER_AGENT_SECRET}
+      WOODPECKER_AGENT_SECRET: ${WOODPECKER_AGENT_SECRET}
+      # One at a time: a parallel Next build and a Nest build on the same
+      # machine mostly fight over CPU rather than finishing sooner.
+      WOODPECKER_MAX_WORKFLOWS: ${WOODPECKER_MAX_WORKFLOWS:-1}
+
+volumes:
+  woodpecker-agent-config:

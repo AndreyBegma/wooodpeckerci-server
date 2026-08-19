@@ -1,0 +1,51 @@
+# FEAT-20260819-205 — Woodpecker CI server on the QNAP NAS.
+#
+# Server only. The agent runs on the Mac, because the NAS cannot build images:
+# 4 GB of RAM total and `bun install` for the Luna monorepos would not survive
+# there. The Mac is also arm64, so builds are native for the NAS target.
+#
+# Joins the existing `luna_luna` network so the Cloudflare Tunnel connector can
+# reach this by service name, exactly like web and api. That is also why no
+# HTTP port is published to the LAN — the only way in is the tunnel.
+#
+# Port 9000 IS published: the agent on the Mac connects to it over gRPC on the
+# local network. Not exposed through the tunnel.
+
+name: woodpecker
+
+services:
+  woodpecker-server:
+    image: woodpeckerci/woodpecker-server:v3
+    container_name: woodpecker-server
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+    volumes:
+      - woodpecker-server-data:/var/lib/woodpecker/
+    environment:
+      WOODPECKER_HOST: https://ci.luna-realm.com
+      WOODPECKER_GITHUB: "true"
+      WOODPECKER_GITHUB_CLIENT: ${WOODPECKER_GITHUB_CLIENT}
+      WOODPECKER_GITHUB_SECRET: ${WOODPECKER_GITHUB_SECRET}
+      # Woodpecker 3.x renamed this. The server warns and generates a random
+      # secret if only the old name is present, which means the agent cannot
+      # authenticate and the secret changes on every restart. Both names are
+      # set so the agent side keeps working regardless of which one it reads.
+      WOODPECKER_GRPC_SECRET: ${WOODPECKER_AGENT_SECRET}
+      WOODPECKER_AGENT_SECRET: ${WOODPECKER_AGENT_SECRET}
+      WOODPECKER_ADMIN: ${WOODPECKER_ADMIN}
+      # Closed to everyone but the listed owner. The server is on the public
+      # internet via the tunnel, so open registration would let any GitHub user
+      # sign in and enumerate the instance.
+      WOODPECKER_OPEN: "false"
+      WOODPECKER_REPO_OWNERS: ${WOODPECKER_REPO_OWNERS}
+    mem_limit: 384m
+    networks: [luna]
+
+volumes:
+  woodpecker-server-data:
+
+networks:
+  luna:
+    external: true
+    name: luna_luna
