@@ -23,14 +23,18 @@ services:
       WOODPECKER_SERVER: 172.17.0.1:9000
       WOODPECKER_GRPC_SECRET: ${WOODPECKER_GRPC_SECRET}
       WOODPECKER_AGENT_SECRET: ${WOODPECKER_AGENT_SECRET}
-      WOODPECKER_MAX_WORKFLOWS: 2
+      # Один workflow на агента: три параллельных пайплайна на хост.
+      WOODPECKER_MAX_WORKFLOWS: 1
       # Лимиты на контейнеры шагов. Без них один разогнавшийся jest на этом
       # хосте уже убивал всё вокруг (2026-08-28); с продом на той же машине
-      # это недопустимо. 4 GiB на шаг, свопа нет (swap == mem), три агента по
-      # два workflow — худший случай 24 GiB из 61. Сборки образов через сокет
-      # идут в buildkit на хосте и под этот лимит не попадают.
-      WOODPECKER_BACKEND_DOCKER_LIMIT_MEM: 4294967296
-      WOODPECKER_BACKEND_DOCKER_LIMIT_MEM_SWAP: 4294967296
+      # это недопустимо. 8 GiB на шаг, свопа нет (swap == mem), три агента по
+      # одному workflow — худший случай 24 GiB из 61. Сборки образов через
+      # сокет идут в buildkit на хосте и под этот лимит не попадают.
+      # 4 GiB было мало: тестовый шаг luna-atlas (turbo гонит тесты пакетов
+      # параллельно, 11 воркеров) упирался в потолок и получал OOM-kill
+      # (2026-09-12 20:36, пайплайн 509).
+      WOODPECKER_BACKEND_DOCKER_LIMIT_MEM: 8589934592
+      WOODPECKER_BACKEND_DOCKER_LIMIT_MEM_SWAP: 8589934592
     # Сам агент — маленький gRPC-клиент; 512 MiB ему за глаза.
     mem_limit: 512m
     container_name: woodpecker-agent-1
