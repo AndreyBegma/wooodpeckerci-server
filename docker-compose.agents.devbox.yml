@@ -1,0 +1,55 @@
+# Три агента Woodpecker на devbox.
+#
+# Сервер остаётся на NAS. Достучаться до него отсюда напрямую нельзя — он за
+# домашним NAT, gRPC-порт наружу не смотрит. Поэтому NAS сам держит обратный
+# SSH-туннель на этот сервер (контейнер devbox-tunnel на NAS), и порт 9000
+# появляется здесь на docker-мосту 172.17.0.1 — адрес, который видят
+# контейнеры агентов.
+#
+# По тому же туннелю на порту 2222 доступен sshd самого NAS: шаг deploy
+# заливает туда образ, как раньше это делал агент на Маке.
+name: woodpecker-agents
+
+services:
+  agent-1: &agent
+    image: woodpeckerci/woodpecker-agent:v3
+    command: agent
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - agent-1-config:/etc/woodpecker
+    environment:
+      # сервер на NAS, через обратный туннель
+      WOODPECKER_SERVER: 172.17.0.1:9000
+      WOODPECKER_GRPC_SECRET: ${WOODPECKER_GRPC_SECRET}
+      WOODPECKER_AGENT_SECRET: ${WOODPECKER_AGENT_SECRET}
+      WOODPECKER_MAX_WORKFLOWS: 2
+      # Лимиты на контейнеры шагов. Без них один разогнавшийся jest на этом
+      # хосте уже убивал всё вокруг (2026-08-28); с продом на той же машине
+      # это недопустимо. 4 GiB на шаг, свопа нет (swap == mem), три агента по
+      # два workflow — худший случай 24 GiB из 61. Сборки образов через сокет
+      # идут в buildkit на хосте и под этот лимит не попадают.
+      WOODPECKER_BACKEND_DOCKER_LIMIT_MEM: 4294967296
+      WOODPECKER_BACKEND_DOCKER_LIMIT_MEM_SWAP: 4294967296
+    # Сам агент — маленький gRPC-клиент; 512 MiB ему за глаза.
+    mem_limit: 512m
+    container_name: woodpecker-agent-1
+
+  agent-2:
+    <<: *agent
+    container_name: woodpecker-agent-2
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - agent-2-config:/etc/woodpecker
+
+  agent-3:
+    <<: *agent
+    container_name: woodpecker-agent-3
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - agent-3-config:/etc/woodpecker
+
+volumes:
+  agent-1-config:
+  agent-2-config:
+  agent-3-config:
