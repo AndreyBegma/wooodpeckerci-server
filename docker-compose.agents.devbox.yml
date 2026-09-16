@@ -1,4 +1,4 @@
-# Три агента Woodpecker на devbox.
+# Пять агентов Woodpecker на devbox.
 #
 # Сервер остаётся на NAS. Достучаться до него отсюда напрямую нельзя — он за
 # домашним NAT, gRPC-порт наружу не смотрит. Поэтому NAS сам держит обратный
@@ -23,7 +23,7 @@ services:
       WOODPECKER_SERVER: 172.17.0.1:9000
       WOODPECKER_GRPC_SECRET: ${WOODPECKER_GRPC_SECRET}
       WOODPECKER_AGENT_SECRET: ${WOODPECKER_AGENT_SECRET}
-      # Один workflow на агента: три параллельных пайплайна на хост.
+      # Один workflow на агента: пять параллельных пайплайнов на хост.
       WOODPECKER_MAX_WORKFLOWS: 1
       # Лимиты на контейнеры шагов. Без них один разогнавшийся jest на этом
       # хосте уже убивал всё вокруг (2026-08-28); с продом на той же машине
@@ -33,6 +33,15 @@ services:
       # 4 GiB было мало: тестовый шаг luna-atlas (turbo гонит тесты пакетов
       # параллельно, 11 воркеров) упирался в потолок и получал OOM-kill
       # (2026-09-12 20:36, пайплайн 509).
+      #
+      # 2026-09-16, агентов стало пять. Арифметика «худший случай» из абзаца
+      # выше изменилась и стоит того, чтобы её проговорить: 5 x 8 GiB = 40 GiB
+      # из 61, и это на хосте, где idle-потребление в тот день было 41 GiB
+      # (стеки luna staging/production/burst, стек denitsa staging, vscode-server,
+      # два nest --watch, netdata и сессии Claude). Пять шагов, одновременно
+      # упёршихся в свой потолок, хост не переживёт — раньше это было
+      # 24 GiB и запас был настоящим. Если начнутся OOM-kill'ы на шагах,
+      # первое, что надо трогать, — это число ниже, а не лимит.
       WOODPECKER_BACKEND_DOCKER_LIMIT_MEM: 8589934592
       WOODPECKER_BACKEND_DOCKER_LIMIT_MEM_SWAP: 8589934592
     # Сам агент — маленький gRPC-клиент; 512 MiB ему за глаза.
@@ -53,7 +62,32 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - agent-3-config:/etc/woodpecker
 
+  # Четвёртый и пятый — по решению владельца, 2026-09-16.
+  #
+  # Замер того же дня говорит, что очереди за агентом нет: по последним 25
+  # пайплайнам denitsa-app медиана ожидания между created и started — 5 секунд,
+  # максимум 60, ни один пайплайн не ждал свободного агента. То есть эти два
+  # контейнера не сокращают ожидание, потому что ожидания не было; они
+  # увеличивают число пайплайнов, которые могут идти одновременно на 16 ядрах.
+  # Записано здесь, чтобы через полгода никто не искал, какой замер это решение
+  # опровергал.
+  agent-4:
+    <<: *agent
+    container_name: woodpecker-agent-4
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - agent-4-config:/etc/woodpecker
+
+  agent-5:
+    <<: *agent
+    container_name: woodpecker-agent-5
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - agent-5-config:/etc/woodpecker
+
 volumes:
   agent-1-config:
   agent-2-config:
   agent-3-config:
+  agent-4-config:
+  agent-5-config:
