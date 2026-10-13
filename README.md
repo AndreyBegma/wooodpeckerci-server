@@ -144,5 +144,5 @@ repository.
 
 ## License
 
-This repository has no license file. Woodpecker CI itself is licensed under
+MIT — see [LICENSE](LICENSE). Woodpecker CI itself is licensed under
 Apache 2.0.
